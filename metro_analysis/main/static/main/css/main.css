@@ -1,0 +1,335 @@
+/* Основные стили */
+body {
+    font-family: 'Chakra Petch', sans-serif;
+    background-color: #FFFFFF;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    height: 115px;
+    background-color: #FFFFFF;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    margin-left: 50px;
+    height: 100%;
+}
+
+.header-content img {
+    width: 147px;
+    height: 88px;
+}
+
+.header-title {
+    font-size: 48px;
+    font-weight: 600;
+    color: #000000;
+    margin-left: 20px;
+}
+
+.page-title {
+    text-align: center;
+    font-size: 48px;
+    font-weight: 600;
+    color: #000000;
+    margin-top: 30px;
+}
+
+.search-form {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.search-input {
+    width: 630px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid #B3B3B3;
+    padding-left: 10px;
+    font-size: 14px;
+    font-family: 'Chakra Petch', sans-serif;
+}
+
+.request-button-link {
+    text-decoration: none;
+    margin-left: 20px;
+}
+
+.request-button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 102px;
+    height: 40px;
+    border-radius: 10px;
+    background-color: #D4212D;
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 14px;
+    font-family: 'Chakra Petch', sans-serif;
+    position: relative;
+    cursor: pointer;
+    border: none;
+    padding: 0 10px;
+}
+
+.request-circle {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-color: #FFFFFF;
+    color: #D4212D;
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.station-list {
+    display: grid;
+    grid-template-columns: repeat(3, 371px);
+    gap: 69px 56px;
+    justify-content: center;
+    margin-top: 30px;
+    margin-bottom: 50px;
+    list-style: none;
+    padding-left: 0;
+}
+
+.station-card {
+    width: 371px;
+    height: 308px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: #FFFFFF;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    position: relative;
+}
+
+.station-img {
+    width: 351px;
+    height: 213px;
+    border-radius: 10px;
+    margin-top: 10px;
+}
+
+.station-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #000000;
+    margin-top: 10px;
+    margin-bottom: 5px;
+    margin-left: 23px;
+    position: absolute;
+    left: 23px;
+    top: 233px;
+}
+
+.station-line {
+    display: flex;              /* Включаем flexbox для контейнера */
+    align-items: center;        /* Выравниваем элементы по центру вертикально */
+    justify-content: flex-start; /* Выравнивание элементов по левому краю */
+    width: 100%;
+    margin-left: 18px;
+    position: absolute;
+    left: -20px;
+    top: 280px;
+}
+
+.line-circle {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    color: #FFFFFF;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 23px;
+}
+
+.line-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #000000;
+}
+
+.more-button {
+    width: 83px;
+    height: 24px;
+    border-radius: 10px;
+    border: 2px solid #000000;
+    background-color: #FFFFFF;
+    font-size: 12px;
+    font-family: 'Chakra Petch', sans-serif;
+    color: #000000;
+    text-align: center;
+    line-height: 21px;
+    text-decoration: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;          /* Автоматический отступ слева, чтобы прижать кнопку к правому краю */
+    margin-right: 20px;
+}
+
+.station-details {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 30px;
+}
+
+.line-banner {
+    width: 730px;
+    height: 41px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.line-number {
+    position: absolute;
+    left: 10px;
+    font-size: 32px;
+    font-weight: 600;
+    color: #FFFFFF;
+}
+
+.station-details-title {
+    font-size: 32px;
+    font-weight: 600;
+    color: #FFFFFF;
+}
+
+.station-large-img {
+    width: 730px;
+    height: 459px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.station-info, .station-attendance {
+    width: 690px;
+    background-color: #FFFFFF;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.info-title, .attendance-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #000000;
+    margin-bottom: 10px;
+    margin-top: -5px;
+}
+
+.info-text, .attendance-text {
+    font-size: 12px;
+    font-family: 'Chakra Petch', sans-serif;
+    color: #000000;
+    line-height: 1.5;
+}
+
+.request-form {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.time-select {
+    width: 402px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid #B3B3B3;
+    padding-left: 10px;
+    font-size: 14px;
+    font-family: 'Chakra Petch', sans-serif;
+}
+.flow-list {
+    width: 730px;
+    background-color: #FFFFFF;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    margin: 30px auto;
+    list-style: none;
+    padding-left: 0;
+    border: 1px solid #B3B3B3;
+}
+
+.flow-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+}
+
+.flow-img {
+    width: 100px;
+    height: 75px;
+    border-radius: 10px;
+    margin-right: 20px;
+}
+
+.flow-info {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.flow-line {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.flow-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-right: 20px;
+}
+
+.line-circle {
+    width: 23px;
+    height: 23px;
+    border-radius: 50%;
+    color: #FFFFFF;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 5px;
+}
+
+.line-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #000000;
+    margin-right: 20px;
+}
+
+.flow-visits {
+    font-size: 14px;
+    font-weight: 600;
+    color: #000000;
+    margin-left: auto;
+}

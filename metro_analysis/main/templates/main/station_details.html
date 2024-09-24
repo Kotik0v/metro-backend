@@ -1,0 +1,24 @@
+{% extends 'main/layout.html' %}
+{% load static %}
+
+{% block title %}
+Детали станции
+{% endblock %}
+
+{% block content %}
+<div class="station-details">
+    <div class="line-banner" style="background-color: {{ data.line_color }}">
+        <span class="line-number">{{ data.line_number }}</span>
+        <h2 class="station-details-title">{{ data.title }}</h2>
+    </div>
+    <img class="station-large-img" src="{{ data.pic }}" alt="station image">
+    <div class="station-info">
+        <h3 class="info-title">Описание</h3>
+        <p class="info-text">{{ data.description }}</p>
+    </div>
+    <div class="station-attendance">
+        <h3 class="attendance-title">Посещаемость</h3>
+        <p class="attendance-text">{{ data.average_visits }} тысячи человек в сутки в среднем за квартал</p>
+    </div>
+</div>
+{% endblock %}

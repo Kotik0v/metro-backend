@@ -1,0 +1,34 @@
+{% extends 'main/layout.html' %}
+{% load static %}
+
+{% block title %}
+Список станций
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Список станций</h1>
+<form class="search-form" action="{% url 'search_url' %}" method="GET">
+    <input class="search-input" name="text" type="text" placeholder="Поиск...">
+    <a href="{% url 'flow_analysis_url' data.request_id %}" class="request-button-link">
+        <button type="button" class="request-button">
+            <span>Заявка</span>
+            <div class="request-circle">{{ data.count_stations }}</div>
+        </button>
+    </a>
+</form>
+<ul class="station-list">
+    {% for station in data.stations %}
+        <li class="station-card">
+            <img class="station-img" src="{{ station.pic }}" alt="station image">
+            <h3 class="station-title">{{ station.title }}</h3>
+            <div class="station-line">
+                <div class="line-circle" style="background-color: {{ station.line_color }}">
+                    {{ station.line_number }}
+                </div>
+                <span class="line-name">{{ station.line_name }}</span>
+                <a class="more-button" href="{% url 'station_details_url' station.id %}">Подробнее</a>
+            </div>
+        </li>
+    {% endfor %}
+</ul>
+{% endblock %}
