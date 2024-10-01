@@ -7,8 +7,8 @@
 
 {% block content %}
 <h1 class="page-title">Список станций</h1>
-<form class="search-form" action="{% url 'search_url' %}" method="GET">
-    <input class="search-input" name="text" type="text" placeholder="Поиск...">
+<form class="search-form" action="{% url 'home_url' %}" method="GET">
+    <input class="search-input" name="station_search_name" type="text" placeholder="Поиск...">
     <a href="{% url 'flow_analysis_url' data.request_id %}" class="request-button-link">
         <button type="button" class="request-button">
             <span>Заявка</span>

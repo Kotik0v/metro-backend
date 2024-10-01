@@ -24,36 +24,45 @@ STATIONS = [
      'line_number': '8', 'line_name': 'Калининская', 'line_color': '#FFDD00', 'average_visits': '129'}
 ]
 
-REQUESTS = [
-    {'id': 1, 'stations': [1, 2, 3], 'time': 'morning'}
+FLOW_ANALYSIS = [
+    {'id': 1, 'stations': {1: 3, 2: 1, 3: 2}, 'time': 'morning'}
 ]
 
+
 def home(request):
-    count_stations = len(REQUESTS[0]['stations'])
-    request_id = REQUESTS[0]['id']
-    return render(request, 'main/stations.html', {'data': {
-        'stations': STATIONS,
-        'count_stations': count_stations,
-        'request_id': request_id
-    }})
+    search_text = request.GET.get('station_search_name', '')
+    if search_text:
+        stations = [station for station in STATIONS if search_text.lower() in station['title'].lower()]
+    else:
+        stations = STATIONS
+
+    count_stations = len(FLOW_ANALYSIS[0]['stations'])
+    request_id = FLOW_ANALYSIS[0]['id']
+    return render(request, 'main/stations.html', {
+        'data': {
+            'stations': stations,
+            'count_stations': count_stations,
+            'request_id': request_id
+        }
+    })
 
 def station_details(request, id):
     station = next((item for item in STATIONS if item["id"] == id), None)
     return render(request, 'main/station_details.html', {'data': station})
 
-def flow_analysis(request, id):
-    stations_in_request = REQUESTS[0]['stations']
-    selected_stations = [station for station in STATIONS if station['id'] in stations_in_request]
+
+def flow_analysis(request, request_id):
+    request_data = next((req for req in FLOW_ANALYSIS if req["id"] == request_id), None)
+    if not request_data:
+        return render(request, 'main/flow_analysis.html', {'data': {'stations': []}})
+
+    station_order = request_data['stations']
+
+    filtered_stations = [station for station in STATIONS if station['id'] in station_order]
+
+    ordered_stations = sorted(filtered_stations, key=lambda x: station_order[x['id']])
+
     return render(request, 'main/flow_analysis.html', {'data': {
-        'stations': selected_stations
+        'stations': ordered_stations
     }})
 
-def search_stations(request):
-    search_text = request.GET.get('text', '')
-    filtered_stations = [station for station in STATIONS if search_text.lower() in station['title'].lower()]
-    count_stations = len(REQUESTS[0]['stations'])
-    return render(request, 'main/stations.html', {'data': {
-        'stations': filtered_stations,
-        'count_stations': count_stations,
-        'request_id': REQUESTS[0]['id']
-    }})
