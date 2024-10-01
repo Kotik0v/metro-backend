@@ -282,6 +282,14 @@ header {
     border-bottom: 1px solid #ccc;
 }
 
+.flow-order {
+    font-size: 16px;
+    font-weight: 600;
+    color: #000000;
+    margin-right: 20px;
+    margin-left: 5px;
+}
+
 .flow-img {
     width: 100px;
     height: 75px;
@@ -321,14 +329,14 @@ header {
 }
 
 .line-name {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 600;
     color: #000000;
     margin-right: 20px;
 }
 
 .flow-visits {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 600;
     color: #000000;
     margin-left: auto;

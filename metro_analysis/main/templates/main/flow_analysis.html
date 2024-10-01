@@ -18,6 +18,7 @@
 <ul class="flow-list">
     {% for station in data.stations %}
         <li class="flow-item">
+            <div class="flow-order" >{{ station.order }}</div>
             <img class="flow-img" src="{{ station.pic }}" alt="station image">
             <div class="flow-info">
                 <div class="flow-line">

@@ -62,7 +62,11 @@ def flow_analysis(request, request_id):
 
     ordered_stations = sorted(filtered_stations, key=lambda x: station_order[x['id']])
 
+    for i, station in enumerate(ordered_stations):
+        station['order'] = i + 1
+
     return render(request, 'main/flow_analysis.html', {'data': {
         'stations': ordered_stations
+
     }})
 
