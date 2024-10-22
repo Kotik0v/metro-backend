@@ -9,26 +9,42 @@
 <h1 class="page-title">Список станций</h1>
 <form class="search-form" action="{% url 'home_url' %}" method="GET">
     <input class="search-input" name="station_search_name" type="text" placeholder="Поиск...">
-    <a href="{% url 'flow_analysis_url' data.request_id %}" class="request-button-link">
-        <button type="button" class="request-button">
+    {% if data.count_stations > 0 %}
+        <a href="{% url 'flow_analysis_url' data.request_id %}" class="request-button-link">
+            <button type="button" class="request-button">
+                <span>Заявка</span>
+                <div class="request-circle">{{ data.count_stations }}</div>
+            </button>
+        </a>
+    {% else %}
+        <button type="button" class="request-button" disabled>
             <span>Заявка</span>
-            <div class="request-circle">{{ data.count_stations }}</div>
+            <div class="request-circle">0</div>
         </button>
-    </a>
+    {% endif %}
 </form>
+
 <ul class="station-list">
     {% for station in data.stations %}
         <li class="station-card">
-            <img class="station-img" src="{{ station.pic }}" alt="station image">
-            <h3 class="station-title">{{ station.title }}</h3>
-            <div class="station-line">
-                <div class="line-circle" style="background-color: {{ station.line_color }}">
-                    {{ station.line_number }}
+            <a href="{% url 'station_details_url' id=station.id %}" style="text-decoration: none; color: inherit;">
+                <img class="station-img" src="{{ station.picture_url }}" alt="station image">
+                <h3 class="station-title">{{ station.title }}</h3>
+                <div class="station-line">
+                    <div class="line-circle" style="background-color: {{ station.line_color }}">
+                        {{ station.line_number }}
+                    </div>
+                    <span class="line-name">{{ station.line_name }}</span>
+                    <form action="{% url 'add_station' %}" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" value="{{ station.id }}" name="station_id">
+                        <button class="more-button" type="submit">Добавить</button>
+                    </form>
                 </div>
-                <span class="line-name">{{ station.line_name }}</span>
-                <a class="more-button" href="{% url 'station_details_url' station.id %}">Подробнее</a>
-            </div>
+            </a>
         </li>
+    {% empty %}
+        <li style="font-family: 'Chakra Petch', sans-serif; color: black">Нет доступных станций</li>
     {% endfor %}
 </ul>
 {% endblock %}

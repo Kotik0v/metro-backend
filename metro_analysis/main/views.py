@@ -1,43 +1,23 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.db import connection
+from django.contrib.auth.models import User
+from django.db import models
+from .models import Station, FlowAnalysis, FlowAnalysisStation
 
-STATIONS = [
-    {'title': 'Бауманская', 'pic': 'http://127.0.0.1:9000/test/1.jpg', 'id': 1,
-     'description': '«Ба́уманская» — станция Московского метрополитена на Арбатско-Покровской линии. Расположена в Басманном районе (ЦАО) вдоль Спартаковской улицы вблизи её пересечения с Бауманской. Названа в честь революционера Николая Баумана. Открыта 18 января 1944 года в составе участка «Курская» — «Измайловская». Пилонная трёхсводчатая станция глубокого заложения с одной островной платформой. Является объектом культурного наследия России. ',
-     'line_number': '3', 'line_name': 'Арбатско-Покровская', 'line_color': '#0072BA', 'average_visits': '114'},
-    {'title': 'Комсомольская', 'pic': 'http://127.0.0.1:9000/test/2.jpg', 'id': 2,
-     'description': 'станция Московского метрополитена на Кольцевой линии. Связана пересадкой с одноимённой станцией на Сокольнической линии. Расположена в Красносельском районе (ЦАО) под Комсомольской площадью, по которой и получила своё название. Открыта 30 января 1952 года в составе участка «Курская» — «Белорусская». Колонная трёхсводчатая станция глубокого заложения с одной островной платформой. ',
-     'line_number': '1', 'line_name': 'Сокольническая', 'line_color': '#D41317', 'average_visits': '49'},
-    {'title': 'Киевская', 'pic': 'http://127.0.0.1:9000/test/3.jpg', 'id': 3,
-     'description': 'станция Московского метрополитена на Кольцевой линии. Связана пересадками с двумя одноимёнными станциями, одна из которых располагается на Арбатско-Покровской линии, другая — на Филёвской. Расположена в районе Дорогомилово (ЗАО); названа по Киевскому вокзалу. Открыта 14 марта 1954 года в составе участка «Белорусская» — «Парк культуры». Пилонная трёхсводчатая станция глубокого заложения с одной островной платформой. Единственная станция Кольцевой линии метро, расположенная не в Центральном административном округе Москвы. ',
-     'line_number': '3', 'line_name': 'Арбатско-Покровская', 'line_color': '#0072BA', 'average_visits': '68'},
-    {'title': 'Пушкинская', 'pic': 'http://127.0.0.1:9000/test/4.jpg', 'id': 4,
-     'description': 'станция Московского метрополитена на Таганско-Краснопресненской линии. Связана пересадками со станциями «Тверская» на Замоскворецкой линии и Чеховская на Серпуховско-Тимирязевской линии. Расположена в Тверском районе (ЦАО); названа по одноимённой площади. Открыта 17 декабря 1975 года одновременно со станцией «Кузнецкий Мост» в составе участка, соединившего Ждановский и Краснопресненский радиусы в единую линию. ',
-     'line_number': '7', 'line_name': 'Таганско-Краснопресненская', 'line_color': '#943E90', 'average_visits': '90'},
-    {'title': 'Красные Ворота', 'pic': 'http://127.0.0.1:9000/test/5.jpg', 'id': 5,
-     'description': 'станция Московского метрополитена на Сокольнической линии. Расположена на границе Басманного и Красносельского районов Центрального административного округа Москвы. Названа по одноимённым памятнику архитектуры и площади. Открыта 15 мая 1935 года в составе первого участка метрополитена. Первая в мире пилонная трёхсводчатая станция глубокого заложения с центральным залом[2]. ',
-     'line_number': '1', 'line_name': 'Сокольническая', 'line_color': '#D41317', 'average_visits': '50'},
-    {'title': 'Таганская', 'pic': 'http://127.0.0.1:9000/test/6.jpg', 'id': 6,
-     'description': 'станция Московского метрополитена на Кольцевой линии. Связана пересадкой с одноимённой станцией на Таганско-Краснопресненской линии и станцией «Марксистская» на Калининской линии. Расположена в Таганском районе (ЦАО) под Гончарной улицей. Названа по Таганской площади, на которой находится её вестибюль (на момент открытия вестибюль выходил на Верхнюю Таганскую площадь, которая в 1963 году была объединена с Нижней). Открыта 1 января 1950 года в составе участка «Курская» — «Парк культуры». Пилонная трёхсводчатая станция глубокого заложения с одной островной платформой. ',
-     'line_number': '5', 'line_name': 'Кольцевая', 'line_color': '#915133', 'average_visits': '45'},
-    {'title': 'Новогиреево', 'pic': 'http://127.0.0.1:9000/test/7.jpg', 'id': 7,
-     'description': 'станция Московского метрополитена на Калининской линии. Расположена под Зелёным проспектом на его пересечении со Свободным проспектом на территории района Новогиреево (ВАО), по которому и получила своё название. Открыта 30 декабря 1979 года в составе участка «Марксистская» — «Новогиреево». Колонная трёхпролётная мелкого заложения с одной островной платформой. С момента открытия в 1979 году и до ввода в строй станции «Новокосино» в 2012 году данная станция являлась конечной. ',
-     'line_number': '8', 'line_name': 'Калининская', 'line_color': '#FFDD00', 'average_visits': '129'}
-]
-
-FLOW_ANALYSIS = [
-    {'id': 1, 'stations': {1: 3, 2: 1, 3: 2}, 'time': 'morning'}
-]
-
-
+from datetime import datetime
+@login_required
 def home(request):
     search_text = request.GET.get('station_search_name', '')
     if search_text:
-        stations = [station for station in STATIONS if search_text.lower() in station['title'].lower()]
+        stations = Station.objects.filter(title__icontains=search_text, status='active')
     else:
-        stations = STATIONS
+        stations = Station.objects.filter(status='active')
 
-    count_stations = len(FLOW_ANALYSIS[0]['stations'])
-    request_id = FLOW_ANALYSIS[0]['id']
+    current_flow_analysis = FlowAnalysis.objects.filter(user=request.user, status='draft').first()
+    count_stations = current_flow_analysis.stations.count() if current_flow_analysis else 0
+    request_id = current_flow_analysis.id if current_flow_analysis else 0
+
     return render(request, 'main/stations.html', {
         'data': {
             'stations': stations,
@@ -46,27 +26,97 @@ def home(request):
         }
     })
 
+@login_required
 def station_details(request, id):
-    station = next((item for item in STATIONS if item["id"] == id), None)
-    return render(request, 'main/station_details.html', {'data': station})
+    station = Station.objects.get(id=id)
+    return render(request, 'main/station_details.html', {
+        'data': {
+            'title': station.title,
+            'description': station.description,
+            'line_number': station.line_number,
+            'line_name': station.line_name,
+            'line_color': station.line_color,
+            'average_visits': station.average_visits,
+            'pic': station.picture_url
+        }
+    })
 
-
+@login_required
 def flow_analysis(request, request_id):
-    request_data = next((req for req in FLOW_ANALYSIS if req["id"] == request_id), None)
-    if not request_data:
-        return render(request, 'main/flow_analysis.html', {'data': {'stations': []}})
+    current_flow_analysis = FlowAnalysis.objects.filter(id=request_id, user=request.user).first()
 
-    station_order = request_data['stations']
+    if not current_flow_analysis or current_flow_analysis.status == 'deleted':
+        return render(request, 'main/flow_analysis.html', {'data': {'stations': [], 'request_id': request_id}})
 
-    filtered_stations = [station for station in STATIONS if station['id'] in station_order]
+    station_orders = FlowAnalysisStation.objects.filter(flow_analysis=current_flow_analysis).order_by('order')
+    stations = [
+        {
+            'id': station_order.station.id,
+            'order': station_order.order,
+            'title': station_order.station.title,
+            'pic': station_order.station.picture_url,
+            'line_number': station_order.station.line_number,
+            'line_name': station_order.station.line_name,
+            'line_color': station_order.station.line_color,
+            'average_visits': station_order.station.average_visits
+        }
+        for station_order in station_orders
+    ]
 
-    ordered_stations = sorted(filtered_stations, key=lambda x: station_order[x['id']])
+    return render(request, 'main/flow_analysis.html', {
+        'data': {
+            'stations': stations,
+            'request_id': request_id
+        }
+    })
 
-    for i, station in enumerate(ordered_stations):
-        station['order'] = i + 1
+@login_required
+def add_station_to_flow_analysis(request):
+    if request.method == 'POST':
+        current_flow_analysis = FlowAnalysis.objects.filter(user=request.user, status='draft').first()
 
-    return render(request, 'main/flow_analysis.html', {'data': {
-        'stations': ordered_stations
+        if not current_flow_analysis:
+            current_flow_analysis = FlowAnalysis.objects.create(
+                user=request.user,
+                created_at=datetime.now(),
+                status='draft'
+            )
 
-    }})
+        station_id = request.POST.get('station_id')
+        station = Station.objects.get(id=station_id)
 
+        if not FlowAnalysisStation.objects.filter(flow_analysis=current_flow_analysis, station=station).exists():
+            max_order = FlowAnalysisStation.objects.filter(flow_analysis=current_flow_analysis).aggregate(
+                max_order=models.Max('order')
+            )['max_order'] or 0
+            FlowAnalysisStation.objects.create(
+                flow_analysis=current_flow_analysis,
+                station=station,
+                order=max_order + 1
+            )
+
+        return redirect('home_url')
+    return redirect('home_url')
+
+
+@login_required
+def delete_flow_analysis(request):
+    if request.method == 'POST':
+        flow_analysis_id = request.POST.get('flow_analysis_id')
+
+        if flow_analysis_id and flow_analysis_id.isdigit():
+            flow_analysis_id = int(flow_analysis_id)
+            with connection.cursor() as cursor:
+                cursor.execute("UPDATE flow_analyses SET status = %s WHERE id = %s", ['deleted', flow_analysis_id])
+
+        return redirect('home_url')
+    return redirect('home_url')
+
+@login_required
+def remove_station_from_flow_analysis(request, station_id):
+    if request.method == 'POST':
+        current_flow_analysis = FlowAnalysis.objects.filter(user=request.user, status='draft').first()
+        if current_flow_analysis:
+            FlowAnalysisStation.objects.filter(flow_analysis=current_flow_analysis, station_id=station_id).delete()
+        return redirect('flow_analysis_url', request_id=current_flow_analysis.id)
+    return redirect('home_url')
