@@ -2,7 +2,6 @@ from django.db import models
 from datetime import datetime
 from django.contrib.auth.models import User
 
-
 class Station(models.Model):
     ACTIVE = "active"
     DELETED = "deleted"
@@ -10,7 +9,6 @@ class Station(models.Model):
         (ACTIVE, "действует"),
         (DELETED, "удален"),
     ]
-
     title = models.CharField(max_length=255, null=False)
     description = models.TextField(null=False)
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default=ACTIVE)
