@@ -22,6 +22,7 @@ from .serializers import (
     AcceptFlowAnalysisSerializer
 )
 from datetime import datetime
+import numpy as np
 
 # Станции метро (Услуги)
 class StationListView(APIView):
@@ -112,7 +113,15 @@ class AddStationToFlowAnalysisView(APIView):
         if serializer.is_valid():
             station_id = serializer.validated_data['station_id']
             max_order = FlowAnalysisStation.objects.filter(flow_analysis=flow_analysis).aggregate(models.Max('order'))['order__max'] or 0
-            FlowAnalysisStation.objects.create(flow_analysis=flow_analysis, station_id=station_id, order=max_order + 1)
+
+
+            FlowAnalysisStation.objects.create(
+                flow_analysis=flow_analysis,
+                station_id=station_id,
+                order=max_order + 1,
+                flow=None  # поле nullable
+            )
+
             return Response(status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -188,6 +197,24 @@ class FlowAnalysisFormView(APIView):
         flow_analysis.save()
         return Response(status=status.HTTP_200_OK)
 
+# вспомогательная функция для потока Пуассона
+def calculate_poisson_flow(average_visits, time_of_day):
+    if time_of_day == 'morning':
+        time_factor = 0.6
+    elif time_of_day == 'day':
+        time_factor = 1.0
+    elif time_of_day == 'evening':
+        time_factor = 0.8
+    else:
+        time_factor = 1.0
+
+    #Вычисление лямбда для распределения Пуассона
+    lambda_value = average_visits * time_factor
+
+    #Возвращает случайную величину, распределенную по Пуассону
+    return np.random.poisson(lam=lambda_value)
+
+
 class FlowAnalysisCompleteView(APIView):
     def put(self, request, pk):
         # Предопределённый пользователь
@@ -204,11 +231,16 @@ class FlowAnalysisCompleteView(APIView):
                 flow_analysis.moderator = user
                 flow_analysis.ended_at = datetime.now()
 
-                final_flow = sum([
-                    station.station.average_visits
-                    for station in FlowAnalysisStation.objects.filter(flow_analysis=flow_analysis)
-                ])
-                flow_analysis.flow = final_flow
+                # вычисление flow для каждой станции
+                for station in flow_analysis.stations.all():
+                    # Рассчитаваем пуассоновский поток на основе average_visits и day_time
+                    station.flow = calculate_poisson_flow(station.station.average_visits, flow_analysis.day_time)
+                    station.save()
+
+                flow_analysis.save()
+                return Response(status=status.HTTP_200_OK)
+
+
             else:
                 flow_analysis.status = 'cancelled'
                 flow_analysis.moderator = user

@@ -45,7 +45,7 @@ class FlowAnalysisStationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FlowAnalysisStation
-        fields = ['order', 'station']
+        fields = ['order', 'station', 'flow']
 
 # Сериализатор для анализа потока
 class FlowAnalysisSerializer(serializers.ModelSerializer):
@@ -55,7 +55,7 @@ class FlowAnalysisSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FlowAnalysis
-        fields = ["id", "user", "moderator", "created_at", "formed_at", "ended_at", "status", "day_time", "flow", "stations"]
+        fields = ["id", "user", "moderator", "created_at", "formed_at", "ended_at", "status", "day_time", "stations"]
 
 # Сериализатор для изменения анализа потока
 class PutFlowAnalysisSerializer(serializers.ModelSerializer):
