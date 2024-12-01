@@ -36,13 +36,25 @@ class StationListView(APIView):
         else:
             stations = Station.objects.filter(status='active')
 
+
         flow_analysis = FlowAnalysis.objects.filter(user=user, status='draft').first()
         draft_request_id = flow_analysis.id if flow_analysis else None
         count_stations = flow_analysis.stations.count() if flow_analysis else 0
 
         serializer = StationListSerializer(stations, many=True)
         response = serializer.data
-        response.append({'draft_request_id': draft_request_id, 'count_stations': count_stations})
+
+        extra_data = {
+            'draft_request_id': draft_request_id,
+            'count_stations': count_stations
+        }
+
+        if flow_analysis:
+            flow_analysis_stations = FlowAnalysisStation.objects.filter(flow_analysis=flow_analysis).order_by('order')
+            flow_stations_serializer = FlowAnalysisStationSerializer(flow_analysis_stations, many=True)
+            extra_data['stations_in_draft'] = flow_stations_serializer.data
+
+        response.append(extra_data)
 
         return Response(response, status=status.HTTP_200_OK)
 
