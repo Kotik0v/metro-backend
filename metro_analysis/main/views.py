@@ -35,7 +35,7 @@ class IsModerator(IsAuthenticated):
 
 # Станции метро (Услуги)
 class StationListView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     authentication_classes = [CsrfExemptSessionAuthentication]
 
     @swagger_auto_schema(
@@ -48,7 +48,7 @@ class StationListView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class StationDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     authentication_classes = [CsrfExemptSessionAuthentication]
 
     @swagger_auto_schema(
