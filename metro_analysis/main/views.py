@@ -1,335 +1,434 @@
 from django.shortcuts import get_object_or_404
-from django.http import Http404
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
-from django.contrib.auth.models import User
-from django.db import models
-from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth import login, logout, authenticate
+from django.db.models import Max
+from datetime import datetime
+import numpy as np
 from .models import Station, FlowAnalysis, FlowAnalysisStation
 from .serializers import (
-    AddImageSerializer,
     StationSerializer,
-    AddStationToFlowAnalysisSerializer,
     StationDetailSerializer,
-    StationListSerializer,
-    FlowAnalysisStationSerializer,
     FlowAnalysisSerializer,
-    PutFlowAnalysisSerializer,
+    FlowAnalysisStationSerializer,
+    AddStationToFlowAnalysisSerializer,
     UserRegistrationSerializer,
     UserUpdateSerializer,
     AuthTokenSerializer,
-    AcceptFlowAnalysisSerializer
+    AcceptFlowAnalysisSerializer,
+    AddImageSerializer
 )
-from datetime import datetime
-import numpy as np
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+
+from rest_framework.authentication import SessionAuthentication
+
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return
+
+class IsModerator(IsAuthenticated):
+    def has_permission(self, request, view):
+        return super().has_permission(request, view) and request.user.is_staff
 
 # Станции метро (Услуги)
 class StationListView(APIView):
-    def get(self, request):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
-        search_text = request.GET.get('title', '')
-        if search_text:
-            stations = Station.objects.filter(title__icontains=search_text, status='active')
-        else:
-            stations = Station.objects.filter(status='active')
-
-
-        flow_analysis = FlowAnalysis.objects.filter(user=user, status='draft').first()
-        draft_request_id = flow_analysis.id if flow_analysis else None
-        count_stations = flow_analysis.stations.count() if flow_analysis else 0
-
-        serializer = StationListSerializer(stations, many=True)
-        response = serializer.data
-
-        extra_data = {
-            'draft_request_id': draft_request_id,
-            'count_stations': count_stations
-        }
-
-        if flow_analysis:
-            flow_analysis_stations = FlowAnalysisStation.objects.filter(flow_analysis=flow_analysis).order_by('order')
-            flow_stations_serializer = FlowAnalysisStationSerializer(flow_analysis_stations, many=True)
-            extra_data['stations_in_draft'] = flow_stations_serializer.data
-
-        response.append(extra_data)
-
-        return Response(response, status=status.HTTP_200_OK)
+    @swagger_auto_schema(
+        operation_description="Получение списка станций метро.",
+        responses={200: StationSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs):
+        stations = Station.objects.filter(status=Station.ACTIVE)
+        serializer = StationSerializer(stations, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class StationDetailView(APIView):
-    def get(self, request, pk):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
+    @swagger_auto_schema(
+        operation_description="Получение детальной информации о станции метро по ID.",
+        responses={200: StationDetailSerializer()}
+    )
+    def get(self, request, pk, *args, **kwargs):
         station = get_object_or_404(Station, pk=pk)
         serializer = StationDetailSerializer(station)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def post(self, request):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
+class StationCreateView(APIView):
+    permission_classes = [IsModerator]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
+    @swagger_auto_schema(
+        operation_description="Создание новой станции метро.",
+        request_body=StationDetailSerializer,
+        responses={201: StationDetailSerializer()}
+    )
+    def post(self, request, *args, **kwargs):
         serializer = StationDetailSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def put(self, request, pk):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
+class StationUpdateView(APIView):
+    permission_classes = [IsModerator]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
-        station = get_object_or_404(Station, id=pk)
+    @swagger_auto_schema(
+        operation_description="Обновление информации о станции метро.",
+        request_body=StationDetailSerializer,
+        responses={200: StationDetailSerializer()}
+    )
+    def put(self, request, pk, *args, **kwargs):
+        station = get_object_or_404(Station, pk=pk)
         serializer = StationDetailSerializer(station, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, pk):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
+class StationDeleteView(APIView):
+    permission_classes = [IsModerator]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
-        station = get_object_or_404(Station, pk=pk)
-        station.status = 'deleted'
+    @swagger_auto_schema(
+        operation_description="Удаление станции метро по ID.",
+        responses={204: "No Content"}
+    )
+    def delete(self, request, pk, *args, **kwargs):
+        station =get_object_or_404(Station, pk=pk)
+        station.status = Station.DELETED
         station.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class StationImageView(APIView):
-    def post(self, request, pk):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
+    permission_classes = [IsModerator]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
+    @swagger_auto_schema(
+        operation_description="Загрузка или обновление изображения станции метро.",
+        request_body=AddImageSerializer,
+        responses={200: "Image updated successfully"}
+    )
+    def post(self, request, pk, *args, **kwargs):
+        station = get_object_or_404(Station, pk=pk)
         serializer = AddImageSerializer(data=request.data)
+
         if serializer.is_valid():
-            station = get_object_or_404(Station, pk=pk)
             station.picture_url = serializer.validated_data['picture_url']
             station.save()
-            return Response(status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-class AddStationToFlowAnalysisView(APIView):
-    def post(self, request):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
-
-        flow_analysis = FlowAnalysis.objects.filter(user=user, status='draft').first()
-        if not flow_analysis:
-            flow_analysis = FlowAnalysis.objects.create(user=user, status='draft')
-
-        serializer = AddStationToFlowAnalysisSerializer(data=request.data)
-        if serializer.is_valid():
-            station_id = serializer.validated_data['station_id']
-            max_order = FlowAnalysisStation.objects.filter(flow_analysis=flow_analysis).aggregate(models.Max('order'))['order__max'] or 0
-
-
-            FlowAnalysisStation.objects.create(
-                flow_analysis=flow_analysis,
-                station_id=station_id,
-                order=max_order + 1,
-                flow=None  # поле nullable
-            )
-
-            return Response(status=status.HTTP_200_OK)
+            return Response({'message': 'Изображение станции обновлено'}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # Анализы потоков (Заявки)
 class FlowAnalysisListView(APIView):
-    def get(self, request):
-        date = request.GET.get('date', None)
-        status_filter = request.GET.get('status', None)
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
-        queryset = FlowAnalysis.objects.exclude(status='deleted').exclude(status='draft')
-        if date:
-            queryset = queryset.filter(formed_at__gte=date)
-        if status_filter:
-            queryset = queryset.filter(status=status_filter)
+    @swagger_auto_schema(
+        operation_description="Получение списка всех анализов потоков пассажиров.",
+        responses={200: FlowAnalysisSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs):
+        if request.user.is_staff:
+            flow_analyses = FlowAnalysis.objects.all()
+        else:
+            flow_analyses = FlowAnalysis.objects.filter(user=request.user).exclude(status=FlowAnalysis.DELETED)
 
-        serializer = FlowAnalysisSerializer(queryset, many=True)
+        serializer = FlowAnalysisSerializer(flow_analyses, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class FlowAnalysisDetailView(APIView):
-    def get(self, request, pk):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
+    @swagger_auto_schema(
+        operation_description="Получение детальной информации об анализе потока по ID.",
+        responses={200: FlowAnalysisSerializer()}
+    )
+    def get(self, request, pk, *args, **kwargs):
         flow_analysis = get_object_or_404(FlowAnalysis, pk=pk)
+
+        if not request.user.is_staff and (flow_analysis.user != request.user or flow_analysis.status == FlowAnalysis.DELETED):
+            return Response({'error': 'Вы не можете просматривать этот анализ потока'}, status=status.HTTP_403_FORBIDDEN)
+
         serializer = FlowAnalysisSerializer(flow_analysis)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def put(self, request, pk):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
+class FlowAnalysisCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
+    @swagger_auto_schema(
+        operation_description="Создание нового анализа потока пассажиров.",
+        request_body=FlowAnalysisSerializer,
+        responses={201: FlowAnalysisSerializer()}
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = FlowAnalysisSerializer(data={**request.data, 'user': request.user.id})
+        if serializer.is_valid():
+            flow_analysis = serializer.save()
+            return Response(FlowAnalysisSerializer(flow_analysis).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class FlowAnalysisUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
+
+    @swagger_auto_schema(
+        operation_description="Обновление анализа потока пассажиров по ID.",
+        request_body=FlowAnalysisSerializer,
+        responses={200: FlowAnalysisSerializer()}
+    )
+    def put(self, request, pk, *args, **kwargs):
         flow_analysis = get_object_or_404(FlowAnalysis, pk=pk)
-        serializer = PutFlowAnalysisSerializer(flow_analysis, data=request.data, partial=True)
+        if flow_analysis.user != request.user and not request.user.is_staff:
+            return Response({'error': 'Вы не можете редактировать этот анализ потока'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = FlowAnalysisSerializer(flow_analysis, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(status=status.HTTP_200_OK)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
-
-        flow_analysis = get_object_or_404(FlowAnalysis, pk=pk)
-        flow_analysis.status = 'deleted'
-        flow_analysis.ended_at = datetime.now()
-        flow_analysis.save()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-class FlowAnalysisCreateView(APIView):
-    def post(self, request):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
-
-        flow_analysis = FlowAnalysis.objects.create(
-            user=user,
-            status='draft',
-            created_at=datetime.now()
-        )
-        serializer = FlowAnalysisSerializer(flow_analysis)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class FlowAnalysisFormView(APIView):
-    def put(self, request, pk):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
+    @swagger_auto_schema(
+        operation_description="Формирование анализа потока пассажиров (перевод из статуса 'черновик' в 'сформирован').",
+        responses={200: "Request successfully formed", 400: "Bad request"}
+    )
+    def put(self, request, pk, *args, **kwargs):
         flow_analysis = get_object_or_404(FlowAnalysis, pk=pk)
-        if flow_analysis.status != 'draft':
-            return Response({'error': 'Анализ потока не является черновиком'}, status=status.HTTP_400_BAD_REQUEST)
 
+        if flow_analysis.user != request.user:
+            return Response({'error': 'Вы не можете формировать этот анализ потока'}, status=status.HTTP_403_FORBIDDEN)
+
+        if flow_analysis.status != FlowAnalysis.DRAFT:
+            return Response({'error': 'Только черновик можно формировать'}, status=status.HTTP_400_BAD_REQUEST)
+
+        flow_analysis.status = FlowAnalysis.FORMED
         flow_analysis.formed_at = datetime.now()
-        flow_analysis.status = 'formed'
         flow_analysis.save()
-        return Response(status=status.HTTP_200_OK)
-
-# вспомогательная функция для потока Пуассона
-def calculate_poisson_flow(average_visits, time_of_day):
-    if time_of_day == 'morning':
-        time_factor = 0.6
-    elif time_of_day == 'day':
-        time_factor = 1.0
-    elif time_of_day == 'evening':
-        time_factor = 0.8
-    else:
-        time_factor = 1.0
-
-    #Вычисление лямбда для распределения Пуассона
-    lambda_value = average_visits * time_factor
-
-    #Возвращает случайную величину, распределенную по Пуассону
-    return np.random.poisson(lam=lambda_value)
-
+        return Response(FlowAnalysisSerializer(flow_analysis).data, status=status.HTTP_200_OK)
 
 class FlowAnalysisCompleteView(APIView):
-    def put(self, request, pk):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
+    permission_classes = [IsModerator]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
+    @swagger_auto_schema(
+        operation_description="Завершение анализа потока пассажиров (перевод из 'сформирован' в 'завершён' или 'отклонён').",
+        request_body=AcceptFlowAnalysisSerializer,
+        responses={200: "Request moderated successfully", 400: "Bad request"}
+    )
+    def put(self, request, pk, *args, **kwargs):
         flow_analysis = get_object_or_404(FlowAnalysis, pk=pk)
-        serializer = AcceptFlowAnalysisSerializer(data=request.data)
-        if flow_analysis.status != 'formed':
-            return Response({'error': 'Анализ потока не сформирован'}, status=status.HTTP_400_BAD_REQUEST)
 
+        if flow_analysis.status != FlowAnalysis.FORMED:
+            return Response({'error': 'Только сформированный анализ потока можно завершать'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = AcceptFlowAnalysisSerializer(data=request.data)
         if serializer.is_valid():
             if serializer.validated_data['accept']:
-                flow_analysis.status = 'completed'
-                flow_analysis.moderator = user
+                flow_analysis.status = FlowAnalysis.COMPLETED
                 flow_analysis.ended_at = datetime.now()
 
-                # вычисление flow для каждой станции
                 for station in flow_analysis.stations.all():
-                    # Рассчитаваем пуассоновский поток на основе average_visits и day_time
-                    station.flow = calculate_poisson_flow(station.station.average_visits, flow_analysis.day_time)
+                    station.flow = calculate_poisson_flow(station.station.average_visits,
+                                                          flow_analysis.day_time)
                     station.save()
 
-                flow_analysis.save()
-                return Response(status=status.HTTP_200_OK)
-
-
+                flow_analysis.moderator = request.user
             else:
-                flow_analysis.status = 'cancelled'
-                flow_analysis.moderator = user
+                flow_analysis.status = FlowAnalysis.CANCELLED
                 flow_analysis.ended_at = datetime.now()
+                flow_analysis.moderатор = request.user
             flow_analysis.save()
-            return Response(status=status.HTTP_200_OK)
+            return Response(FlowAnalysisSerializer(flow_analysis).data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# Многие-ко-многим (станции в анализе потока)
-class RemoveStationFromFlowAnalysisView(APIView):
-    def delete(self, request, flow_analysis_id, station_id):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
+class FlowAnalysisDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
-        flow_analysis = get_object_or_404(FlowAnalysis, pk=flow_analysis_id)
-        FlowAnalysisStation.objects.filter(flow_analysis=flow_analysis, station_id=station_id).delete()
+    @swagger_auto_schema(
+        operation_description="Удаление анализа потока по ID.",
+        responses={204: "No Content"}
+    )
+    def delete(self, request, pk, *args, **kwargs):
+        flow_analysis = get_object_or_404(FlowAnalysis, pk=pk)
+        if flow_analysis.user != request.user and not request.user.is_staff:
+            return Response({'error': 'Вы не можете удалять этот анализ потока'},
+                            status=status.HTTP_403_FORBIDDEN)
+        flow_analysis.status = FlowAnalysis.DELETED
+        flow_analysis.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-class UpdateStationInFlowAnalysisView(APIView):
-    def put(self, request, flow_analysis_id, station_id):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
+class RemoveStationFromFlowAnalysisView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
+    @swagger_auto_schema(
+        operation_description="Удаление станции из анализа потока по ID станции и ID анализа.",
+        responses={204: "No Content", 403: "Forbidden", 404: "Not Found"}
+    )
+    def delete(self, request, flow_analysis_id, station_id, *args, **kwargs):
+        flow_analysis = get_object_or_404(FlowAnalysis, pk=flow_analysis_id)
+
+        if flow_analysis.user != request.user and not request.user.is_staff:
+            return Response({'error': 'Вы не можете редактировать этот анализ потока'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        FlowAnalysisStation.objects.filter(flow_analysis=flow_analysis, station_id=station_id).delete()
+        return Response({'message': 'Станция удалена из анализа потока'}, status=status.HTTP_204_NO_CONTENT)
+
+class UpdateStationInFlowAnalysisView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
+
+    @swagger_auto_schema(
+        operation_description="Обновление порядка станции в анализе потока.",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'order': openapi.Schema(type=openapi.TYPE_INTEGER,
+                                        description="Новый порядок станции в анализе")
+            },
+            required=['order']),
+        responses={200: "Order updated successfully", 400: "Bad request", 404: "Not Found"}
+    )
+    def put(self, request, flow_analysis_id, station_id, *args, **kwargs):
         station_in_flow_analysis = get_object_or_404(FlowAnalysisStation, flow_analysis_id=flow_analysis_id, station_id=station_id)
+
+        if station_in_flow_analysis.flow_analysis.user != request.user and not request.user.is_staff:
+            return Response({'error': 'Вы не можете редактировать этот анализ потока'}, status=status.HTTP_403_FORBIDDEN)
 
         if 'order' in request.data:
             station_in_flow_analysis.order = request.data['order']
             station_in_flow_analysis.save()
-            return Response(status=status.HTTP_200_OK)
-        return Response({'error': 'No order provided'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Порядок станции в анализе потока обновлён'}, status=status.HTTP_200_OK)
+        return Response({'error': 'Необходимо указать новый порядок станции'}, status=status.HTTP_400_BAD_REQUEST)
+
+class AddStationToFlowAnalysisView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
+
+    @swagger_auto_schema(
+        operation_description="Добавление станции в анализ потока.",
+        request_body=AddStationToFlowAnalysisSerializer,
+        responses={200: "Station added to flow analysis", 400: "Bad request"}
+    )
+    def post(self, request, *args, **kwargs):
+        flow_analysis = FlowAnalysis.objects.filter(user=request.user, status=FlowAnalysis.DRAFT).first()
+        if not flow_analysis:
+            flow_analysis = FlowAnalysis.objects.create(user=request.user, status=FlowAnalysis.DRAFT)
+
+        serializer = AddStationToFlowAnalysisSerializer(data=request.data)
+        if serializer.is_valid():
+            station_id = serializer.validated_data['station_id']
+            order = serializer.validated_data.get('order')
+
+            if order is None:
+                order = (FlowAnalysisStation.objects.filter(flow_analysis=flow_analysis).aggregate(Max('order'))['order__max'] or 0) + 1
+
+            FlowAnalysisStation.objects.create(
+                flow_analysis=flow_analysis,
+                station_id=station_id,
+                order=order,
+                flow=None  # поле nullable
+            )
+
+            return Response({'message': 'Станция добавлена в анализ потока'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # Пользователи
 class UserRegistrationView(APIView):
-    def post(self, request):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
+    permission_classes = [AllowAny]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
+    @swagger_auto_schema(
+        operation_description="Регистрация нового пользователя.",
+        request_body=UserRegistrationSerializer,
+        responses={201: UserRegistrationSerializer(), 400: "Bad Request"}
+    )
+    def post(self, request, *args, **kwargs):
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            # Instead of returning a token, we just return user info
+            login(request, user)  # Log in the user immediately after registration
             return Response({
+                'message': 'Пользователь успешно зарегистрирован',
                 'username': user.username,
                 'email': user.email
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserUpdateView(APIView):
-    def put(self, request):
-        # Предопределённый пользователь
-        user = User.objects.get(username='newuser')
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
-        serializer = UserUpdateSerializer(instance=user, data=request.data, partial=True)
+    @swagger_auto_schema(
+        operation_description="Обновление профиля пользователя.",
+        request_body=UserUpdateSerializer,
+        responses={200: UserUpdateSerializer(), 400: "Bad Request"}
+    )
+    def put(self, request, *args, **kwargs):
+        serializer = UserUpdateSerializer(instance=request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserLoginView(APIView):
-    def post(self, request):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
+    permission_classes = [AllowAny]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
-        # Simulating user login by returning a fixed message
-        return Response({
-            'message': 'User logged in successfully',
-            'username': user.username
-        }, status=status.HTTP_200_OK)
+    @swagger_auto_schema(
+        operation_description="Вход пользователя в систему.",
+        request_body=AuthTokenSerializer,
+        responses={200: "Login successful", 400: "Invalid credentials"}
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = AuthTokenSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            login(request, user)
+            return Response({
+                'message': 'Пользователь успешно вошёл в систему',
+                'username': user.username
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserLogoutView(APIView):
-    def post(self, request):
-        # Предопределённый пользователь
-        user = User.objects.get(username='user')
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
-        # Simulating user logout by returning a fixed message
-        return Response({
-            'message': 'User logged out successfully',
-            'username': user.username
-        }, status=status.HTTP_204_NO_CONTENT)
+    @swagger_auto_schema(
+        operation_description="Выход пользователя из системы.",
+        responses={204: "Logout successful"}
+    )
+    def post(self, request, *args, **kwargs):
+        logout(request)
+        return Response({'message': 'Пользователь успешно вышел из системы'}, status=status.HTTP_204_NO_CONTENT)
 
+
+def calculate_poisson_flow(average_visits, time_of_day):
+    """
+    Рассчитывает поток посетителей на основе среднего количества посещений и времени дня.
+    """
+    time_factor = {
+        'morning': 0.6,
+        'day': 1.0,
+        'evening': 0.8,
+        'night': 0.5
+    }.get(time_of_day, 1.0)
+
+    lambda_value = average_visits * time_factor
+    return np.random.poisson(lam=lambda_value)
