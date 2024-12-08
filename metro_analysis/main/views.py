@@ -39,13 +39,42 @@ class StationListView(APIView):
     authentication_classes = [CsrfExemptSessionAuthentication]
 
     @swagger_auto_schema(
-        operation_description="Получение списка станций метро.",
+        operation_description="Получение списка станций метро и, если пользователь аутентифицирован, информации о его текущей заявке.",
         responses={200: StationSerializer(many=True)}
     )
     def get(self, request, *args, **kwargs):
         stations = Station.objects.filter(status=Station.ACTIVE)
         serializer = StationSerializer(stations, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        response_data = serializer.data
+
+        if request.user and request.user.is_authenticated:
+            flow_analysis = FlowAnalysis.objects.filter(user=request.user, status='draft').first()
+            if flow_analysis:
+                draft_request_id = flow_analysis.id
+                count_stations = flow_analysis.stations.count()
+
+                flow_analysis_stations = FlowAnalysisStation.objects.filter(flow_analysis=flow_analysis).order_by(
+                    'order')
+                flow_stations_serializer = FlowAnalysisStationSerializer(flow_analysis_stations, many=True)
+
+                extra_data = {
+                    'draft_request_id': draft_request_id,
+                    'count_stations': count_stations,
+                    'stations_in_draft': flow_stations_serializer.data
+                }
+            else:
+                extra_data = {
+                    'draft_request_id': None,
+                    'count_stations': 0,
+                    'stations_in_draft': []
+                }
+
+            response_data = {
+                'stations': response_data,
+                'draft_info': extra_data
+            }
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
 class StationDetailView(APIView):
     permission_classes = [AllowAny]
