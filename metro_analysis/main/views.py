@@ -44,6 +44,10 @@ class StationListView(APIView):
     )
     def get(self, request, *args, **kwargs):
         stations = Station.objects.filter(status=Station.ACTIVE)
+
+        if 'title' in request.GET:
+            stations = stations.filter(title__icontains=request.GET['title'])
+
         serializer = StationSerializer(stations, many=True)
         response_data = serializer.data
 
@@ -74,7 +78,7 @@ class StationListView(APIView):
                 'draft_info': extra_data
             }
 
-        return Response(response_data, status=status.HTTP_200_OK)
+        return Response({'stations': response_data}, status=status.HTTP_200_OK)
 
 class StationDetailView(APIView):
     permission_classes = [AllowAny]
