@@ -4,6 +4,13 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from main import views
+from main.views import (
+    FlowAnalysisFormView,
+    FlowAnalysisDetailView,
+    FlowAnalysisCreateView,
+    FlowAnalysisUpdateView,
+    FlowAnalysisDeleteView
+)
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -30,7 +37,7 @@ urlpatterns = [
     path('stations/create/', views.StationCreateView.as_view(), name='station-create'),
     path('stations/update/<int:pk>/', views.StationUpdateView.as_view(), name='station-update'),
     path('stations/delete/<int:pk>/', views.StationDeleteView.as_view(), name='station-delete'),
-    path('stations/add/<int:pk>/', views.AddStationToFlowAnalysisView.as_view(), name='station-add'),
+    path('stations/add/', views.AddStationToFlowAnalysisView.as_view(), name='station-add'),
     path('stations/image/<int:pk>/', views.StationImageView.as_view(), name='station-image'),
 
     # Flow Analysis (Заявки)
@@ -39,11 +46,11 @@ urlpatterns = [
     path('flow-analyses/create/', views.FlowAnalysisCreateView.as_view(), name='flow-analyses-create'),
     path('flow-analyses/update/<int:pk>/', views.FlowAnalysisUpdateView.as_view(), name='flow-analyses-update'),
     path('flow-analyses/form/<int:pk>/', views.FlowAnalysisFormView.as_view(), name='flow-analyses-form'),
+    path('flow-analyses/<int:pk>/form/', FlowAnalysisFormView.as_view(), name='flow_analysis_form'),
     path('flow-analyses/complete/<int:pk>/', views.FlowAnalysisCompleteView.as_view(), name='flow-analyses-complete'),
     path('flow-analyses/delete/<int:pk>/', views.FlowAnalysisDeleteView.as_view(), name='flow-analyses-delete'),
-    path('flow-analyses/<int:flow_analyses_id>/delete-station/<int:station_id>/',
-         views.RemoveStationFromFlowAnalysisView.as_view(), name='delete-station-from-flow-analyses'),
-    path('flow-analyses/<int:flow_analyses_id>/update-station/<int:station_id>/',
+    path('flow-analyses/delete-station/', views.RemoveStationFromFlowAnalysisView.as_view(), name='delete-station-from-flow-analyses'),
+    path('flow-analyses/<int:flow_analysis_id>/update-station/<int:station_id>/',
          views.UpdateStationInFlowAnalysisView.as_view(), name='update-station-in-flow-analyses'),
 
     # Users (Пользователи)
